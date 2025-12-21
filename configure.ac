@@ -22,10 +22,10 @@
 
 # Initialize Autoconf
 AC_PREREQ([2.60])
-AC_INIT([xf86-video-amdgpu],
-        [23.0.0],
-        [https://gitlab.freedesktop.org/xorg/driver/xf86-video-amdgpu/-/issues],
-        [xf86-video-amdgpu])
+AC_INIT([xlibre-xf86-video-amdgpu],
+        [25.0.1],
+        [https://github.com/X11Libre/xf86-video-amdgpu/issues],
+        [xlibre-xf86-video-amdgpu])
 
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_HEADERS([config.h])
@@ -198,9 +198,6 @@ b = bswap16(a);
 fi
 
 AC_SUBST([moduledir])
-
-DRIVER_NAME=amdgpu
-AC_SUBST([DRIVER_NAME])
 
 AC_CONFIG_FILES([
                 Makefile

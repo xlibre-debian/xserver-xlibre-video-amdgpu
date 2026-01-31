@@ -35,7 +35,6 @@ AC_CONFIG_AUX_DIR(.)
 
 # Initialize Automake
 AM_INIT_AUTOMAKE([foreign dist-xz])
-AC_SYS_LARGEFILE
 
 # Require X.Org macros 1.8 or later for MAN_SUBSTS set by XORG_MANPAGE_SECTIONS
 m4_ifndef([XORG_MACROS_VERSION],
@@ -56,19 +55,13 @@ fi
 
 AH_TOP([#include "xorg-server.h"])
 
-# Define a configure option for an alternate module directory
 PKG_PROG_PKG_CONFIG([0.25])
-AC_ARG_WITH(xorg-module-dir,
-            AS_HELP_STRING([--with-xorg-module-dir=DIR],
-                           [Default xorg module directory]),
-            [moduledir="$withval"],
-            [moduledir=`$PKG_CONFIG --variable=moduledir xorg-server`])
+
+xlibre_video_drivers_dir=`$PKG_CONFIG xlibre-server --variable=video_drivers_dir`
+AC_SUBST(xlibre_video_drivers_dir)
 
 # Store the list of server defined optional extensions in REQUIRED_MODULES
-XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
-XORG_DRIVER_CHECK_EXT(RENDER, renderproto)
 XORG_DRIVER_CHECK_EXT(XV, videoproto)
-XORG_DRIVER_CHECK_EXT(DPMSExtension, xextproto)
 
 # Checks for libraries.
 PKG_CHECK_MODULES(LIBDRM, [libdrm >= 2.4.121])
@@ -76,8 +69,7 @@ PKG_CHECK_MODULES(LIBDRM_AMDGPU, [libdrm_amdgpu >= 2.4.121])
 PKG_CHECK_MODULES(GBM, [gbm])
 
 # Obtain compiler/linker options for the driver dependencies
-PKG_CHECK_MODULES(XORG, [xorg-server >= 1.18 xproto fontsproto xf86driproto $REQUIRED_MODULES])
-PKG_CHECK_MODULES(XEXT, [xextproto >= 7.0.99.1])
+PKG_CHECK_MODULES(XORG, [xorg-server >= 25.0.0 xproto fontsproto xf86driproto randrproto renderproto xextproto >= 7.0.99.1 $REQUIRED_MODULES])
 
 # Section "OutputClass" is only supported as of xserver 1.16
 PKG_CHECK_EXISTS([xorg-server >= 1.16],
@@ -110,20 +102,7 @@ AM_CONDITIONAL(LIBUDEV, test x$LIBUDEV = xyes)
 SAVE_CPPFLAGS="$CPPFLAGS"
 CPPFLAGS="$CPPFLAGS $XORG_CFLAGS $GBM_CFLAGS"
 
-AC_MSG_CHECKING([whether to include GLAMOR support])
-AC_ARG_ENABLE(glamor,
-	      AS_HELP_STRING([--disable-glamor],
-			     [Disable glamor, a new GL-based acceleration [default=enabled]]),
-	      [GLAMOR="$enableval"],
-	      [GLAMOR=yes])
-
-if test "x$GLAMOR" != "xno"; then
-	AC_CHECK_HEADERS([glamor.h], [GLAMOR_H="yes"], [GLAMOR_H="no"], [#include "xorg-server.h"])
-	AC_DEFINE(USE_GLAMOR, 1, [Enable glamor acceleration])
-else
-	AC_MSG_RESULT([$GLAMOR])
-fi
-AM_CONDITIONAL(GLAMOR, test x$GLAMOR != xno)
+AC_CHECK_HEADERS([glamor.h], [], [AC_MSG_ERROR([glamor needed])], [#include "xorg-server.h"])
 
 AC_CHECK_DECL(GBM_BO_USE_LINEAR,
 	      [AC_DEFINE(HAVE_GBM_BO_USE_LINEAR, 1, [Have GBM_BO_USE_LINEAR])], [],
@@ -137,74 +116,7 @@ AC_CHECK_DECL(GBM_BO_USE_FRONT_RENDERING,
 
 CPPFLAGS="$SAVE_CPPFLAGS"
 
-# Checks for headers/macros for byte swapping
-# Known variants:
-#	<byteswap.h> bswap_16, bswap_32, bswap_64  (glibc)
-#	<sys/endian.h> __swap16, __swap32, __swap64 (OpenBSD)
-#	<sys/endian.h> bswap16, bswap32, bswap64 (other BSD's)
-#	and a fallback to local macros if none of the above are found
-
-# if <byteswap.h> is found, assume it's the correct version
-AC_CHECK_HEADERS([byteswap.h])
-
-# if <sys/endian.h> is found, have to check which version
-AC_CHECK_HEADER([sys/endian.h], [HAVE_SYS_ENDIAN_H="yes"], [HAVE_SYS_ENDIAN_H="no"])
-
-if test "x$HAVE_SYS_ENDIAN_H" = "xyes" ; then
-	AC_MSG_CHECKING([for __swap16 variant of <sys/endian.h> byteswapping macros])
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([
-#include <sys/types.h>
-#include <sys/endian.h>
- ], [
-int a = 1, b;
-b = __swap16(a);
- ])
-], [SYS_ENDIAN__SWAP='yes'], [SYS_ENDIAN__SWAP='no'])
-	AC_MSG_RESULT([$SYS_ENDIAN__SWAP])
-
-	AC_MSG_CHECKING([for bswap16 variant of <sys/endian.h> byteswapping macros])
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([
-#include <sys/types.h>
-#include <sys/endian.h>
- ], [
-int a = 1, b;
-b = bswap16(a);
- ])
-], [SYS_ENDIAN_BSWAP='yes'], [SYS_ENDIAN_BSWAP='no'])
-	AC_MSG_RESULT([$SYS_ENDIAN_BSWAP])
-
-    	if test "$SYS_ENDIAN_BSWAP" = "yes" ; then
-		USE_SYS_ENDIAN_H=yes
-		BSWAP=bswap
-	else	
-	    	if test "$SYS_ENDIAN__SWAP" = "yes" ; then
-			USE_SYS_ENDIAN_H=yes
-			BSWAP=__swap
-		else
-			USE_SYS_ENDIAN_H=no
-		fi
-	fi
-
-	if test "$USE_SYS_ENDIAN_H" = "yes" ; then
-	    AC_DEFINE([USE_SYS_ENDIAN_H], 1, 
-		[Define to use byteswap macros from <sys/endian.h>])
-	    AC_DEFINE_UNQUOTED([bswap_16], ${BSWAP}16, 
-			[Define to 16-bit byteswap macro])
-	    AC_DEFINE_UNQUOTED([bswap_32], ${BSWAP}32, 
-			[Define to 32-bit byteswap macro])
-	    AC_DEFINE_UNQUOTED([bswap_64], ${BSWAP}64, 
-			[Define to 64-bit byteswap macro])
-	fi
-fi
-
-AC_SUBST([moduledir])
-
-AC_CONFIG_FILES([
-                Makefile
-                src/Makefile
-                man/Makefile
-                conf/Makefile
-])
+AC_CONFIG_FILES([Makefile src/Makefile man/Makefile conf/Makefile])
 AC_OUTPUT
 
 dnl
@@ -216,7 +128,7 @@ echo "        exec_prefix:         $exec_prefix"
 echo "        libdir:              $libdir"
 echo "        includedir:          $includedir"
 echo "        configdir:           $configdir"
-
+echo "        video_drivers_dir:   $xlibre_video_drivers_dir"
 echo ""
 echo "        CFLAGS:              $CFLAGS"
 echo "        CXXFLAGS:            $CXXFLAGS"

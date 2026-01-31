@@ -43,7 +43,7 @@ endif
 
 amdgpu_drv_la_LTLIBRARIES = amdgpu_drv.la
 amdgpu_drv_la_LDFLAGS = -module -avoid-version
-amdgpu_drv_ladir = @moduledir@/drivers
+amdgpu_drv_ladir = @xlibre_video_drivers_dir@
 amdgpu_drv_la_SOURCES = \
 	amdgpu_video.c \
 	amdgpu_misc.c amdgpu_probe.c \
@@ -55,7 +55,6 @@ amdgpu_drv_la_SOURCES += \
 	amdgpu_pixmap.c
 
 EXTRA_DIST = \
-	compat-api.h \
 	amdgpu_bo_helper.h \
 	amdgpu_drm_queue.h \
 	amdgpu_glamor.h \

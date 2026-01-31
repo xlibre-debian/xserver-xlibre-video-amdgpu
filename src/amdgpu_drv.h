@@ -67,24 +67,16 @@
 #include "xf86drm.h"
 #include "amdgpu_drm.h"
 
-#ifdef DAMAGE
 #include "damage.h"
 #include "globals.h"
-#endif
 
 #include "xf86Crtc.h"
 #include "X11/Xatom.h"
+#include "picturestr.h"
 
 #include "amdgpu_dri2.h"
 #include "drmmode_display.h"
 #include "amdgpu_bo_helper.h"
-
-/* Render support */
-#ifdef RENDER
-#include "picturestr.h"
-#endif
-
-#include "compat-api.h"
 
 struct _SyncFence;
 
@@ -95,34 +87,12 @@ struct _SyncFence;
 #define MIN(a,b) ((a)>(b)?(b):(a))
 #endif
 
-#if HAVE_BYTESWAP_H
-#include <byteswap.h>
-#elif defined(USE_SYS_ENDIAN_H)
-#include <sys/endian.h>
-#else
-#define bswap_16(value)  \
-        ((((value) & 0xff) << 8) | ((value) >> 8))
-
-#define bswap_32(value) \
-        (((uint32_t)bswap_16((uint16_t)((value) & 0xffff)) << 16) | \
-        (uint32_t)bswap_16((uint16_t)((value) >> 16)))
-
-#define bswap_64(value) \
-        (((uint64_t)bswap_32((uint32_t)((value) & 0xffffffff)) \
-            << 32) | \
-        (uint64_t)bswap_32((uint32_t)((value) >> 32)))
-#endif
-
 #if X_BYTE_ORDER == X_BIG_ENDIAN
-#define le32_to_cpu(x) bswap_32(x)
-#define le16_to_cpu(x) bswap_16(x)
+#include "misc.h"
+/* these are defined in the Xserver SDK headers (misc.h) */
 #define cpu_to_le32(x) bswap_32(x)
-#define cpu_to_le16(x) bswap_16(x)
 #else
-#define le32_to_cpu(x) (x)
-#define le16_to_cpu(x) (x)
 #define cpu_to_le32(x) (x)
-#define cpu_to_le16(x) (x)
 #endif
 
 /* Provide substitutes for gcc's __FUNCTION__ on other compilers */
@@ -134,9 +104,7 @@ typedef enum {
 	OPTION_ACCEL,
 	OPTION_SW_CURSOR,
 	OPTION_PAGE_FLIP,
-#ifdef RENDER
 	OPTION_SUBPIXEL_ORDER,
-#endif
 	OPTION_ZAPHOD_HEADS,
 	OPTION_ACCEL_METHOD,
 	OPTION_DRI3,
@@ -230,7 +198,7 @@ typedef struct {
 
 	Bool(*CloseScreen) (ScreenPtr pScreen);
 
-	void (*BlockHandler) (BLOCKHANDLER_ARGS_DECL);
+	void (*BlockHandler) (ScreenPtr pScreen, void* pTimeout);
 
 	void (*CreateFence) (ScreenPtr pScreen, struct _SyncFence *pFence,
 			     Bool initially_triggered);
@@ -308,14 +276,12 @@ typedef struct {
 		CopyWindowProcPtr SavedCopyWindow;
 		ChangeWindowAttributesProcPtr SavedChangeWindowAttributes;
 		BitmapToRegionProcPtr SavedBitmapToRegion;
-#ifdef RENDER
 		CompositeProcPtr SavedComposite;
 		TrianglesProcPtr SavedTriangles;
 		GlyphsProcPtr SavedGlyphs;
 		TrapezoidsProcPtr SavedTrapezoids;
 		AddTrapsProcPtr SavedAddTraps;
 		UnrealizeGlyphProcPtr SavedUnrealizeGlyph;
-#endif
 		SharePixmapBackingProcPtr SavedSharePixmapBacking;
 		SetSharedPixmapBackingProcPtr SavedSetSharedPixmapBacking;
 	} glamor;

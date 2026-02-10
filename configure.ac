@@ -68,6 +68,24 @@ PKG_CHECK_MODULES(LIBDRM, [libdrm >= 2.4.121])
 PKG_CHECK_MODULES(LIBDRM_AMDGPU, [libdrm_amdgpu >= 2.4.121])
 PKG_CHECK_MODULES(GBM, [gbm])
 
+# Check for DRM header location (Linux uses drm/ subdirectory, BSD may not)
+SAVE_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $LIBDRM_CFLAGS $LIBDRM_AMDGPU_CFLAGS"
+# Check for headers with and without drm/ subdirectory
+AC_CHECK_HEADERS([drm_fourcc.h amdgpu_drm.h],
+    [found_drm_headers=yes],
+    [found_drm_headers=no])
+if test "x$found_drm_headers" = "xno"; then
+    # Fallback: check in drm/ subdirectory
+    AC_CHECK_HEADERS([drm/drm_fourcc.h drm/amdgpu_drm.h],
+        [found_drm_headers=yes
+         # Need to add -I flag for drm/ subdirectory
+         drm_incdir="-I\${includedir}/drm"
+         AC_SUBST(DRM_SUBDIR_INCDIR, ["$drm_incdir"])],
+        [AC_MSG_ERROR([libdrm headers not found - libdrm required])])
+fi
+CPPFLAGS="$SAVE_CPPFLAGS"
+
 # Obtain compiler/linker options for the driver dependencies
 PKG_CHECK_MODULES(XORG, [xorg-server >= 25.0.0 xproto fontsproto xf86driproto randrproto renderproto xextproto >= 7.0.99.1 $REQUIRED_MODULES])
 
@@ -114,6 +132,15 @@ AC_CHECK_DECL(GBM_BO_USE_FRONT_RENDERING,
 	      [#include <stdlib.h>
 	       #include <gbm.h>])
 
+CPPFLAGS="$SAVE_CPPFLAGS"
+
+# Check for GFX12 tile version support in libdrm
+SAVE_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $LIBDRM_CFLAGS"
+AC_CHECK_DECLS([AMD_FMT_MOD_TILE_VER_GFX12, AMD_FMT_MOD_TILE_GFX12_256B_2D, AMD_FMT_MOD_TILE_GFX12_4K_2D, AMD_FMT_MOD_TILE_GFX12_64K_2D, AMD_FMT_MOD_TILE_GFX12_256K_2D],
+    [AC_DEFINE(HAVE_AMD_FMT_MOD_TILE_GFX12, 1, [libdrm has GFX12 tile support])],
+    [AC_MSG_WARN([Some GFX12 tile constants missing - disabling GFX12 support])],
+    [#include <drm_fourcc.h>])
 CPPFLAGS="$SAVE_CPPFLAGS"
 
 AC_CONFIG_FILES([Makefile src/Makefile man/Makefile conf/Makefile])

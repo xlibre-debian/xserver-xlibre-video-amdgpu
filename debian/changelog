@@ -1,3 +1,12 @@
+xserver-xlibre-video-amdgpu (25.1.1-2) unstable; urgency=high
+
+  * Require up-to-date Mesa from backports
+    This only affects stable versions of distros and Ubuntu LTS
+    If you are using Debian/vuan you will have to enable `backports`
+    If you are using Ubuntu you will have to enable `updates`
+
+ -- NexusSfan <nexussfan@duck.com>  Mon, 16 Feb 2026 08:28:40 -0800
+
 xserver-xlibre-video-amdgpu (25.1.1-1) unstable; urgency=high
 
   * New upstream version 25.1.1

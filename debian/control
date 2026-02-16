@@ -24,6 +24,11 @@ Depends:
  ${shlibs:Depends},
  ${misc:Depends},
  ${xviddriver:Depends},
+ mesa-common-dev (>= 25.2.6),
+ mesa-libgallium (>= 25.2.6),
+ mesa-va-drivers (>= 25.2.6),
+ mesa-vdpau-drivers (>= 25.2.6),
+ mesa-vulkan-drivers (>= 25.2.6)
 Provides:
  xserver-xorg-video-amdgpu (= ${binary:Version}),
  ${xviddriver:Provides}
